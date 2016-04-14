@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Conway’s Game of Life</title>
+    <script type="text/javascript" src="//code.jquery.com/jquery-2.2.0.min.js"></script>
+    <script type="text/javascript" src="//d3js.org/d3.v3.min.js"></script>
+    <link rel="stylesheet" href="//darksair.org/styles/latolatinfonts.css">
+    <style>
+     body
+     {
+         margin: 0px;
+         font-family: Lato, "Helvetica Neue", sans-serif;
+         font-size: 18px;
+     }
+
+     svg
+     {
+         width: 100vw;
+         height: 100vh;
+         cursor: none;
+     }
+
+     svg .Cursor
+     {
+         fill: none;
+         stroke: black;
+     }
+
+     #TextBox
+     {
+         position: absolute;
+         left: 50%;
+         width: 480px;
+         margin: 20px auto 0px -250px;
+         text-align: center;
+         padding: 30px;
+         background-color: rgba(236, 240, 241, 0.7);
+     }
+
+     h1
+     {
+         font-weight: 300;
+         margin: 0.2em 0px 0.67em 0px;
+     }
+
+     a.Button
+     {
+         text-decoration: none;
+     }
+     
+    </style>
+  </head>
+  <body>
+    <div id="TextBox">
+      <h1>Conway’s Game of Life</h1>
+      <p>Click to plant seeds.</p>
+      <div><input type="checkbox" id="FastP" />Fast!</div>
+      <div><a href="#" id="BtnStart" class="Button">Start!</a></div>
+    </div>
+    
+    <script type="text/javascript">
+     function Lattice()
+     {
+         this.Cells = {};
+         this.CellList = [];
+
+         this.printAddCell = function()
+         {
+             var Output = "";
+             this.CellList.forEach(function(cell) {
+                 Output += "ThisLattice.addCell(" + cell + ");\n";
+             });
+             console.log(Output);
+         };
+         
+         this.hasCell = function(loc)
+         {
+             return loc.toString() in this.Cells;
+         };
+         
+         this.addCell = function(x, y)
+         {
+             if(!(this.hasCell([x, y])))
+             {
+                 this.Cells[[x, y]] = true;
+                 this.CellList.push([x, y]);
+             }
+             return this;
+         };
+
+         this.allNeighbors = function(loc)
+         {
+             var Neighbors = {};
+             if(loc[0] > 0)
+             {
+                 var Left = [loc[0] - 1, loc[1]];
+                 Neighbors[Left] = true;
+                 Neighbors[[loc[0]-1, loc[1] + 1]] = true;
+                 if(loc[1] > 0)
+                     Neighbors[[loc[0]-1, loc[1] - 1]] = true;
+             }
+             if(loc[1] > 0)
+             {
+                 var Top = [loc[0], loc[1] - 1];
+                 Neighbors[Top] = true;
+                 Neighbors[[loc[0]+1, loc[1] - 1]] = true;
+             }
+             Neighbors[[loc[0]+1, loc[1] + 1]] = true;
+
+             var Right = [loc[0] + 1, loc[1]];
+             Neighbors[Right] = true;
+
+             var Bot = [loc[0], loc[1] + 1];
+             Neighbors[Bot] = true;
+
+             return Neighbors;
+         };
+
+         this.neighbors = function(loc)
+         {
+             var Neighbors = {};
+
+             for(var cell in this.allNeighbors(loc))
+             {
+                 if(cell in this.Cells)
+                 {
+                     Neighbors[cell] = true;
+                 }
+             }
+             return Neighbors;
+         };
+
+         this.nextStep = function()
+         {
+             var NewLattice = new Lattice();
+             for(var cell in this.Cells)
+             {
+                 var TheCell = cell.split(',').map(Number);
+                 var Neighbors = this.neighbors(TheCell);
+                 var VisitedNeighbors = {};
+                 
+                 var Count = Object.keys(Neighbors).length;
+                 if(Count == 2 || Count == 3)
+                 {
+                     NewLattice.addCell(TheCell[0], TheCell[1]);
+                 }
+
+                 for(var neighbor in this.allNeighbors(TheCell))
+                 {
+                     if((!(neighbor in VisitedNeighbors)) && (!(neighbor in this.Cells)))
+                     {
+                         var TheNeighbor = neighbor.split(',').map(Number);
+                         var Count2 = Object.keys(this.neighbors(TheNeighbor)).length;
+                         if(Count2 == 3)
+                             NewLattice.addCell(TheNeighbor[0], TheNeighbor[1]);
+                         VisitedNeighbors[neighbor] = true;
+                     }
+                 }
+             }
+             return NewLattice;
+         };
+
+         this.draw = function(canvas, slow)
+         {
+             var Cells = canvas.selectAll(".Cell")
+                               .data(this.CellList, function(cell) { return cell.toString(); });
+             if(slow == true)
+             {
+                 Cells.enter().append("rect").attr("class", "Cell")
+                      .attr("width", 0).attr("height", 0)
+                      .attr("x", function(cell) { return cell[0] * CellSize + CellSize / 2; })
+                      .attr("y", function(cell) { return cell[1] * CellSize + CellSize / 2; })
+                      .transition().attr("width", CellSize).attr("height", CellSize)
+                      .attr("x", function(cell) { return cell[0] * CellSize; })
+                      .attr("y", function(cell) { return cell[1] * CellSize; });
+                 Cells.exit().transition().attr("width", 0).attr("height", 0)
+                      .attr("x", function(cell) { return cell[0] * CellSize + CellSize / 2; })
+                      .attr("y", function(cell) { return cell[1] * CellSize + CellSize / 2; })
+                      .remove();
+             }
+             else
+             {
+                 Cells.enter().append("rect").attr("class", "Cell")
+                      .attr("width", CellSize).attr("height", CellSize)
+                      .attr("x", function(cell) { return cell[0] * CellSize; })
+                      .attr("y", function(cell) { return cell[1] * CellSize; });
+                 Cells.exit().remove();
+             }
+         };             
+     }
+         
+     function makeCanvas()
+     {
+         return d3.select("body").append("svg");
+     }
+
+     var CellSize = 10;
+     makeCanvas();
+     var CheckBoxFast = document.getElementById("FastP");
+     Canvas = d3.select("svg");
+
+     // The cursor
+     var LastCursorLoc = [0, 0];
+     var LastCursor = null;
+     
+     function onMouseMove()
+     {
+         var X = Math.floor(d3.event.clientX / CellSize) * CellSize + 0.5;
+         var Y = Math.floor(d3.event.clientY / CellSize) * CellSize + 0.5;
+         if(X != LastCursorLoc[0] || Y != LastCursorLoc[1])
+         {
+             if(LastCursor != null)
+                 LastCursor.transition().style("opacity", 0).remove();
+             var Cursor = Canvas.append("rect").attr("class", "Cursor").attr("x", X).attr("y", Y)
+                                .attr("width", CellSize).attr("height", CellSize);
+             LastCursorLoc = [X, Y];
+             LastCursor = Cursor;
+         }
+     }     
+     Canvas.on("mousemove", onMouseMove);
+
+     // Display the cells
+     var ThisLattice = new Lattice();
+
+     // ThisLattice.addCell(33,17);
+     // ThisLattice.addCell(34,17);
+     // ThisLattice.addCell(33,18);
+     // ThisLattice.addCell(35,18);
+     // ThisLattice.addCell(34,19);
+
+     Canvas.on("click", function() {
+         var X = Math.floor(d3.event.clientX / CellSize);
+         var Y = Math.floor(d3.event.clientY / CellSize);
+         ThisLattice.addCell(X, Y);
+         ThisLattice.draw(Canvas);
+     });
+
+     ThisLattice.draw(Canvas);
+
+     d3.select("#BtnStart").on("click", function() {
+         if(CheckBoxFast.checked == true)
+         {
+             window.setInterval(function() {
+                 ThisLattice = ThisLattice.nextStep();
+                 ThisLattice.draw(Canvas, false);
+             }, 100);
+         }
+         else
+         {
+             window.setInterval(function() {
+                 ThisLattice = ThisLattice.nextStep();
+                 ThisLattice.draw(Canvas, true);
+             }, 600);
+         }
+         ThisLattice.printAddCell();
+         d3.select("#BtnStart").on("click", null);
+     });
+    </script>
+  </body>
+</html>     
