@@ -2,7 +2,7 @@
 
 ## Why?
 
-I was looking into [D3.js](https://d3js.org), trying to see if it’s
+I was looking into [D3.js](https://d3js.org), trying to see if there’s
 any way I can integrate it into my workflow.  Sadly I decided that
 it’s not suitable.  This program is a side-effect of me learning D3.
 
